@@ -139,22 +139,86 @@ hr { border-color: #2a2825; }
 </style>
 """, unsafe_allow_html=True)
 
+# ── Custom name-aware respond function ───────────────────────────────────────
+import re
+
+def get_response(user_input):
+    """Try name patterns first (needs capture group), then fall back to Chat."""
+    # "my name is X" / "i am X" / "name is X"
+    name_match = re.search(
+        r'(?:my name is|i am|i\'m|name is)\s+([a-zA-Z]+)', user_input, re.IGNORECASE
+    )
+    if name_match:
+        name = name_match.group(1).capitalize()
+        return f"Hello {name}! 😊 Great to meet you. How can I help you today?"
+    return None  # fall through to NLTK Chat
+
 # ── NLTK chatbot setup ────────────────────────────────────────────────────────
 PAIRS = [
+    # Greetings
     [r'(hi|hello|hey)(.*)',
      ["Hello! Welcome to Spice Garden 🍽️ How can I help you today?"]],
+
+    # How are you
+    [r'(how are you|how r you|how are u|hows it going|how do you do)(.*)',
+     ["I'm doing great, thanks for asking! 😊 How can I help you today?",
+      "All good here! Ready to take your order. What can I get you? 😄"]],
+
+    # What is your name / who are you
+    [r'(what is your name|who are you|what are you|your name)(.*)',
+     ["I'm the Spice Garden virtual assistant 🤖🍽️ Here to help you with our menu, prices, and more!"]],
+
+    # Thank you
+    [r'(thank you|thanks|thank u|thx)(.*)',
+     ["You're welcome! 😊 Is there anything else I can help you with?",
+      "Happy to help! Let me know if you need anything else. 🍽️"]],
+
+    # Goodbye
+    [r'(bye|goodbye|see you|see ya|cya|good night)(.*)',
+     ["Goodbye! 👋 Hope to see you at Spice Garden soon!",
+      "Take care! Come visit us anytime. 😊"]],
+
+    # Compliments
+    [r'(good|great|awesome|nice|excellent|amazing|love it)(.*)',
+     ["That's so kind of you! 😄 We always try our best. Anything else I can help with?"]],
+
+    # Order / place order
+    [r'(i want to order|place an order|can i order|order|order food)(.*)',
+     ["Sure! You can visit us at our Hyderabad location or call us to place your order. 📞\nOur timings are 10 AM – 11 PM."]],
+
+    # Offers / discounts
+    [r'(offer|discount|deal|coupon|promo)(.*)',
+     ["🎉 We have exciting offers running! Visit us in-store or follow us on social media for the latest deals."]],
+
+    # Payment
+    [r'(payment|pay|upi|cash|card|online payment)(.*)',
+     ["💳 We accept Cash, UPI, and all major Cards. Easy and hassle-free!"]],
+
+    # Menu
     [r'(menu|show menu|food menu)(.*)',
      ["Our menu features: 🍕 Pizza · 🍔 Burger · 🍛 Biryani\nAsk me about any item for pricing!"]],
+
+    # Timing
     [r'(timing|opening hours|opening|when are you open)(.*)',
      ["We're open every day from 10 AM to 11 PM. Come hungry! 🕙"]],
+
+    # Location
     [r'(where are you located|location|address|where is the restaurant)(.*)',
      ["We're located in Hyderabad. Drop by anytime! 📍"]],
+
+    # Pizza
     [r'(pizza price|pizza|price of pizza|how much is pizza)(.*)',
      ["🍕 Pizza — ₹250\nFreshly baked with your choice of toppings."]],
+
+    # Burger
     [r'(burger price|burger|price of burger|how much is burger)(.*)',
      ["🍔 Burger — ₹150\nJuicy patty, crisp lettuce, house sauce."]],
+
+    # Biryani
     [r'(biryani price|biryani|price of biryani|how much is biryani)(.*)',
      ["🍛 Biryani — ₹150\nAromatic basmati, slow-cooked to perfection."]],
+
+    # Fallback
     [r'(.*)',
      ["Thanks for reaching out! Our customer care team will contact you shortly. 😊"]],
 ]
@@ -187,7 +251,8 @@ for i, label in enumerate(QUICK_REPLIES):
     if cols[i].button(label, key=f"qr_{label}"):
         user_text = label
         st.session_state.messages.append({"role": "user", "text": user_text})
-        response = chatbot.respond(user_text.lower()) or "Our customer care team will contact you shortly."
+        inp = user_text.lower()
+        response = get_response(inp) or chatbot.respond(inp) or "Our customer care team will contact you shortly."
         st.session_state.messages.append({"role": "bot", "text": response})
         st.rerun()
 
@@ -207,6 +272,7 @@ st.markdown(chat_html, unsafe_allow_html=True)
 # ── Chat input ────────────────────────────────────────────────────────────────
 if user_input := st.chat_input("Type your message…"):
     st.session_state.messages.append({"role": "user", "text": user_input})
-    response = chatbot.respond(user_input.lower()) or "Our customer care team will contact you shortly."
+    inp = user_input.lower()
+    response = get_response(inp) or chatbot.respond(inp) or "Our customer care team will contact you shortly."
     st.session_state.messages.append({"role": "bot", "text": response})
     st.rerun()
